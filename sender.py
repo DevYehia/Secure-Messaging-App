@@ -49,10 +49,10 @@ def generate_rsa_keys():
     return private_key, public_key
 
 # RSA Sign (Encrypt with Private Key)
-def rsa_sign(private_key, message):
+def rsa_sign(private_key, message_bytes):
     rsa_key = RSA.import_key(private_key)
-    cipher = PKCS1_OAEP.new(rsa_key)
-    signature = cipher.encrypt(message.encode())  # Convert message to bytes
+    message_hash = SHA256.new(message_bytes)
+    signature = pkcs1_15.new(rsa_key).sign(message_hash)
     return signature
 
 

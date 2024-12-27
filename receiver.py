@@ -32,11 +32,14 @@ def gen_aes_key():
     return get_random_bytes(16)
 
 # RSA Verify (Decrypt with Public Key)
-def rsa_verify(public_key, signature):
+def rsa_verify(public_key, message_bytes, signature):
     rsa_key = RSA.import_key(public_key)
-    cipher = PKCS1_OAEP.new(rsa_key)
-    original_message = cipher.decrypt(signature).decode()  # Convert bytes to string
-    return original_message
+    message_hash = SHA256.new(message_bytes)
+    try:
+        pkcs1_15.new(rsa_key).verify(message_hash, signature)
+        return True
+    except (ValueError, TypeError):
+        return False
 
 # # Read transmitted data
 # with open('transmission.txt', 'r') as f:
