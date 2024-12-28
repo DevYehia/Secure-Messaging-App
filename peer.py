@@ -86,7 +86,7 @@ class Peer:
         response = self.tcp_socket.recv(1024).decode()
         if response == "login-success":
             self.username = username
-            (self.sender_elgamal_public_p,self.sender_elgamal_public_g,self.sender_elgamal_public_y), self.sender_elgamal_private = sender.elgamal_keygen()
+            (self.sender_elgamal_public_p, self.sender_elgamal_public_g, self.sender_elgamal_public_y), self.sender_elgamal_private = sender.elgamal_keygen()
             print(f"""Generated elgamal keys:
                   elgamal_public_p: {self.sender_elgamal_public_p}
                   elgamal_public_g: {self.sender_elgamal_public_g}
