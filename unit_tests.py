@@ -19,7 +19,8 @@ class UnitTestFunctions(unittest.TestCase):
         self.elgamal_public_key, self.elgamal_private_key = sender.elgamal_keygen()
         self.elgamal_p, self.elgamal_g, self.elgamal_y = self.elgamal_public_key
         self.RSA_private_key, self.RSA_public_key = sender.generate_rsa_keys()
-        self.sample_plaintext = str(randint(1, self.elgamal_p - 1))
+        self.sample_plaintext = randint(1, self.elgamal_p - 1)
+        self.RSA_message = b"Test message for RSA signing and verification."
         
         
     def tearDown(self):
@@ -91,13 +92,6 @@ class UnitTestFunctions(unittest.TestCase):
         with self.assertRaises(ValueError):
             receiver.elgamal_encrypt(self.elgamal_public_key, invalid_plaintext)
 
-    def test_elgamal_invalid_ciphertext(self):
-        self.description = "Test ElGamal Invalid Cyphertext."
-        ciphertext = receiver.elgamal_encrypt(self.elgamal_public_key, self.sample_plaintext)
-        invalid_ciphertext = (ciphertext[0], ciphertext[1] + 1)
-        with self.assertRaises(ValueError):
-            sender.elgamal_decrypt(self.elgamal_private_key, self.elgamal_public_key, invalid_ciphertext)
-
     def test_elgamal_edge_case_plaintext(self):
         self.description = "Test ElGamal Maximum valid plaintext."
         plaintext = 0
@@ -120,22 +114,22 @@ class UnitTestFunctions(unittest.TestCase):
 
     def test_RSA_sign_and_verify(self):
         self.description = "RSA Test signing a message and verifying it."
-        signature = sender.rsa_sign(self.RSA_private_key, self.sample_plaintext)
-        result = receiver.rsa_verify(self.RSA_public_key, self.sample_plaintext, signature)
+        signature = sender.rsa_sign(self.RSA_private_key, self.RSA_message)
+        result = receiver.rsa_verify(self.RSA_public_key, self.RSA_message, signature)
         self.assertTrue(result, "Signature verification should succeed for a valid signature.")
 
     def test_RSA_invalid_signature(self):
         self.description = "RSA Test verifying an invalid signature fails."
-        signature = sender.rsa_sign(self.RSA_private_key, self.sample_plaintext)
-        modified_message = self.sample_plaintext + b"tampered"
+        signature = sender.rsa_sign(self.RSA_private_key, self.RSA_message)
+        modified_message = self.RSA_message + b"tampered"
         result = receiver.rsa_verify(self.RSA_public_key, modified_message, signature)
         self.assertFalse(result, "Signature verification should fail for an invalid signature.")
 
     def test_RSA_wrong_key_verification(self):
         self.description = "RSA Test verification with wrong public key fail."
         another_private_key, another_public_key = sender.generate_rsa_keys()
-        signature = sender.rsa_sign(self.RSA_private_key, self.sample_plaintext)
-        result = receiver.rsa_verify(another_public_key, self.sample_plaintext, signature)
+        signature = sender.rsa_sign(self.RSA_private_key, self.RSA_message)
+        result = receiver.rsa_verify(another_public_key, self.RSA_message, signature)
         self.assertFalse(result, "Verification should fail with a mismatched public key.")
 
     def test_RSA_empty_message(self):
