@@ -1,4 +1,6 @@
-from enum import Enum
+"""
+This module provides functions required for database.
+"""
 from pymongo import MongoClient
 
 

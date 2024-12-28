@@ -1,3 +1,6 @@
+"""
+This module provides functions required for managing user accounts.
+"""
 import database as db
 from pyargon2 import hash
 
@@ -27,6 +30,3 @@ def loginUser(username, password, ip):
             return "login-success"
     else: 
         return "login-account-not-exist"
-
-# def logoutUser(username):
-#     return 

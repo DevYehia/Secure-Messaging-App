@@ -1,6 +1,4 @@
 import base64
-import hashlib
-import select
 import socket
 import sender
 import receiver
@@ -9,6 +7,9 @@ SERVER_TCP_PORT = 5050
 
 
 class Peer:
+    """
+    This class provides a CLI for the user to securely send or receive a message.
+    """
     def __init__(self):
         self.server_ip = input("Enter Server IP: ")
         self.server_port = SERVER_TCP_PORT
@@ -119,19 +120,22 @@ class Peer:
                         receiver_address = (receiver_ip.strip(),int(receiver_port))
                         client_socket.connect(receiver_address)
                         print(f"Connected to {receiver_address}")
+                        # send elgamal public key and RSA public key
                         sender_publish_keys_message = f'{self.sender_elgamal_public_p}\x1F{self.sender_elgamal_public_g}\x1F{self.sender_elgamal_public_y}\x1F{self.bytes_to_string(self.sender_RSA_public)}'
                         client_socket.sendall(sender_publish_keys_message.encode())
+                        # wait for receiver's AES key encrypted with elgamal public key
                         receiver_aes_encrypted_message = client_socket.recv(4096).decode().split('\x1F')
                         receiver_aes_encrypted = (int(receiver_aes_encrypted_message[0]),int(receiver_aes_encrypted_message[1]))
+                        # decrypt receiver's AES key using elgamal
                         receiver_aes_decrypted_at_sender = sender.elgamal_decrypt(self.sender_elgamal_private,(self.sender_elgamal_public_p,self.sender_elgamal_public_g,self.sender_elgamal_public_y),receiver_aes_encrypted)
                         receiver_aes_decrypted_at_sender_bytes = receiver_aes_decrypted_at_sender.to_bytes(length=16,byteorder='big')
+                        # encrypt message with receiver's AES key
                         sender_AES_encrypted_message = sender.aes_encrypt(receiver_aes_decrypted_at_sender_bytes,message)
                         sender_message_bytes = message.encode()
-                        # _SHA256_Hash = hashlib.sha256()
-                        # _SHA256_Hash.update(sender_message_bytes)
-                        # sender_message_bytes_SHA256_hashed = _SHA256_Hash.hexdigest()
+                        # hash and sign the message bytes
                         sender_message_bytes_SHA256_hashed_RSA_signed = sender.rsa_sign(self.sender_RSA_private,sender_message_bytes)
                         sender_message_encrypted_and_hashed = f'{sender_AES_encrypted_message}\x1F{self.bytes_to_string(sender_message_bytes_SHA256_hashed_RSA_signed)}'
+                        # send AES encrypted message and message signature
                         client_socket.sendall(sender_message_encrypted_and_hashed.encode())
                         
                 except ConnectionRefusedError:
@@ -186,29 +190,31 @@ class Peer:
                     conn, sender_address = server_socket.accept()
                     with conn:
                         print(f"Connected by {sender_address}")
-                    
+                        # wait for ssender's elgamal public key and RSA public key
                         data = conn.recv(4096)
                         if data:
                             sender_elgamal_public_p,sender_elgamal_public_g,sender_elgamal_public_y,sender_RSA_public = data.decode().split('\x1F')
+                            # encrypt AES key with sender's elgamal public key
                             receiver_aes_encrypted = receiver.elgamal_encrypt((int(sender_elgamal_public_p),int(sender_elgamal_public_g),int(sender_elgamal_public_y)),int.from_bytes(self.receiver_aes_key))
                             receiver_aes_encrypted_message = f'{receiver_aes_encrypted[0]}\x1F{receiver_aes_encrypted[1]}'
+                            # send encrypted AES key
                             conn.sendall(receiver_aes_encrypted_message.encode())
+                            # wait for sender's encrypted message and signed message
                             data = conn.recv(4096)
                             if data:
                                 sender_AES_encrypted_message, sender_message_bytes_SHA256_hashed_RSA_signed = data.decode().split('\x1F')
+                                # decrypt message using AES key
                                 receiver_AES_decrypted_msg = receiver.aes_decrypt(self.receiver_aes_key,sender_AES_encrypted_message)
                                 receiver_AES_decrypted_msg_bytes = receiver_AES_decrypted_msg.encode()
-                                # _SHA256_Hash = hashlib.sha256()
-                                # _SHA256_Hash.update(receiver_AES_decrypted_msg_bytes)
-                                # receiver_AES_decrypted_msg_bytes_SHA256_hashed = _SHA256_Hash.hexdigest()
+                                # Verify the integrity of the message using sender's RSA public key, decrypted message, and the signature message
                                 receiver_RSA_verified_hashed_msg_bool = receiver.rsa_verify(self.string_to_bytes(sender_RSA_public),receiver_AES_decrypted_msg_bytes,self.string_to_bytes(sender_message_bytes_SHA256_hashed_RSA_signed))
                                 if receiver_RSA_verified_hashed_msg_bool:
                                     return receiver_AES_decrypted_msg
                             else:
-                                print("No data 2")
+                                print("No data received 2")
                             
                         else:
-                            print("No data 1")
+                            print("No data received 1")
                             
             except Exception as e:
                 print(f"An error occurred: {e}")
